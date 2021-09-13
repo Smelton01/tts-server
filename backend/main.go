@@ -44,9 +44,11 @@ func main() {
 	}
 }
 
-type server struct{}
+type server struct{
+	pb.UnimplementedTextToSpeechServer
+}
 
-func (server) Say(ctx context.Context, text *pb.Text) (*pb.Speech, error) {
+func (server) Read(ctx context.Context, text *pb.Text) (*pb.Speech, error) {
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
 		return nil, fmt.Errorf("could not create tmp file: %v", err)

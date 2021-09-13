@@ -45,7 +45,7 @@ func main() {
 	client := pb.NewTextToSpeechClient(conn)
 
 	text := &pb.Text{Text: flag.Arg(0)}
-	res, err := client.Say(context.Background(), text)
+	res, err := client.Read(context.Background(), text)
 	if err != nil {
 		log.Fatalf("could not say %s: %v", text.Text, err)
 	}

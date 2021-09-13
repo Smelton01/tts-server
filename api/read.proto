@@ -13,10 +13,12 @@
 
 syntax = "proto3";
 
-package say;
+package read;
+
+option go_package = "github.com/smelton01/tts-server/read";
 
 service TextToSpeech {
-    rpc Say(Text) returns(Speech) {}
+    rpc Read(Text) returns(Speech) {}
 }
 
 message Text {

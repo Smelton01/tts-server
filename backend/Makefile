@@ -13,7 +13,7 @@
 
 build:
 	GOOS=linux go build -o app
-	docker build -t gcr.io/justforfunc-prep/say .
+	docker build -t tts_server .
 	rm -f app
 
 push:
