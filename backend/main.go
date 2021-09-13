@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -21,8 +22,7 @@ import (
 	"os/exec"
 
 	"github.com/sirupsen/logrus"
-	pb "github.com/campoy/justforfunc/12-say-grpc/api"
-	"golang.org/x/net/context"
+	pb "github.com/smelton01/tts-server/api"
 	"google.golang.org/grpc"
 )
 
@@ -55,9 +55,9 @@ func (server) Say(ctx context.Context, text *pb.Text) (*pb.Speech, error) {
 		return nil, fmt.Errorf("could not close %s: %v", f.Name(), err)
 	}
 
-	cmd := exec.Command("flite", "-t", text.Text, "-o", f.Name())
+	cmd := exec.Command("gtts-cli", text.Text, "-o", f.Name())
 	if data, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("flite failed: %s", data)
+		return nil, fmt.Errorf("gTTS failed: %s", data)
 	}
 
 	data, err := ioutil.ReadFile(f.Name())
