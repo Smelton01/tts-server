@@ -1,6 +1,6 @@
 # TTS - Server: a Text to Speech server with gRPC and Kubernetes
 
-A replacement for the say command available in OSX with the flite speech synthesis engine.
+A replacement for the say command available in OSX with the [gTTS](https://gtts.readthedocs.io/en/latest/) speech synthesis Python library.
 
 Requirements:
 
@@ -8,7 +8,7 @@ Requirements:
 
 References:
 
-- flite [docs](http://www.speech.cs.cmu.edu/flite/)
+- gTTS [docs](https://gtts.readthedocs.io/en/latest/)
 - gRPC [docs](https://grpc.io)
 - Kubernetes [docs](https://kubernetes.io)
 - Google Container Engine [docs](https://cloud.google.com/container-engine/)
