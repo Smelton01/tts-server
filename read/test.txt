@@ -1,0 +1,1 @@
+The Scanner provides a convenient interface for reading data such as a file of newline-delimited lines of text. It reads data by tokens; the Split function defines the token. By default, the function breaks the data into lines with line-termination stripped.
