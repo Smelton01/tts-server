@@ -18,7 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TextToSpeechClient interface {
-	Read(ctx context.Context, in *Text, opts ...grpc.CallOption) (*Speech, error)
+	Read(ctx context.Context, in *Text, opts ...grpc.CallOption) (TextToSpeech_ReadClient, error)
 }
 
 type textToSpeechClient struct {
@@ -29,20 +29,43 @@ func NewTextToSpeechClient(cc grpc.ClientConnInterface) TextToSpeechClient {
 	return &textToSpeechClient{cc}
 }
 
-func (c *textToSpeechClient) Read(ctx context.Context, in *Text, opts ...grpc.CallOption) (*Speech, error) {
-	out := new(Speech)
-	err := c.cc.Invoke(ctx, "/read.TextToSpeech/Read", in, out, opts...)
+func (c *textToSpeechClient) Read(ctx context.Context, in *Text, opts ...grpc.CallOption) (TextToSpeech_ReadClient, error) {
+	stream, err := c.cc.NewStream(ctx, &TextToSpeech_ServiceDesc.Streams[0], "/read.TextToSpeech/Read", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &textToSpeechReadClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type TextToSpeech_ReadClient interface {
+	Recv() (*Speech, error)
+	grpc.ClientStream
+}
+
+type textToSpeechReadClient struct {
+	grpc.ClientStream
+}
+
+func (x *textToSpeechReadClient) Recv() (*Speech, error) {
+	m := new(Speech)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // TextToSpeechServer is the server API for TextToSpeech service.
 // All implementations must embed UnimplementedTextToSpeechServer
 // for forward compatibility
 type TextToSpeechServer interface {
-	Read(context.Context, *Text) (*Speech, error)
+	Read(*Text, TextToSpeech_ReadServer) error
 	mustEmbedUnimplementedTextToSpeechServer()
 }
 
@@ -50,8 +73,8 @@ type TextToSpeechServer interface {
 type UnimplementedTextToSpeechServer struct {
 }
 
-func (UnimplementedTextToSpeechServer) Read(context.Context, *Text) (*Speech, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
+func (UnimplementedTextToSpeechServer) Read(*Text, TextToSpeech_ReadServer) error {
+	return status.Errorf(codes.Unimplemented, "method Read not implemented")
 }
 func (UnimplementedTextToSpeechServer) mustEmbedUnimplementedTextToSpeechServer() {}
 
@@ -66,22 +89,25 @@ func RegisterTextToSpeechServer(s grpc.ServiceRegistrar, srv TextToSpeechServer)
 	s.RegisterService(&TextToSpeech_ServiceDesc, srv)
 }
 
-func _TextToSpeech_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Text)
-	if err := dec(in); err != nil {
-		return nil, err
+func _TextToSpeech_Read_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Text)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(TextToSpeechServer).Read(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/read.TextToSpeech/Read",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TextToSpeechServer).Read(ctx, req.(*Text))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(TextToSpeechServer).Read(m, &textToSpeechReadServer{stream})
+}
+
+type TextToSpeech_ReadServer interface {
+	Send(*Speech) error
+	grpc.ServerStream
+}
+
+type textToSpeechReadServer struct {
+	grpc.ServerStream
+}
+
+func (x *textToSpeechReadServer) Send(m *Speech) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 // TextToSpeech_ServiceDesc is the grpc.ServiceDesc for TextToSpeech service.
@@ -90,12 +116,13 @@ func _TextToSpeech_Read_Handler(srv interface{}, ctx context.Context, dec func(i
 var TextToSpeech_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "read.TextToSpeech",
 	HandlerType: (*TextToSpeechServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "Read",
-			Handler:    _TextToSpeech_Read_Handler,
+			StreamName:    "Read",
+			Handler:       _TextToSpeech_Read_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "read.proto",
 }

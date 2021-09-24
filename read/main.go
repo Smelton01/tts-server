@@ -8,14 +8,16 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"time"
 
 	"google.golang.org/grpc"
 
+	"github.com/sirupsen/logrus"
 	pb "github.com/smelton01/tts-server/api"
 )
 
 func main() {
-	backend := flag.String("b", "localhost:8080", "address of the say backend")
+	backend := flag.String("b", "localhost:8080", "address of the read backend")
 	output := flag.String("o", "output.wav", "wav file where the output will be written")
 	input := flag.String("f", "", "input file to read")
 	flag.Parse()
@@ -41,12 +43,28 @@ func main() {
 	client := pb.NewTextToSpeechClient(conn)
 
 	text := &pb.Text{Text: message}
-	res, err := client.Read(context.Background(), text)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	stream, err := client.Read(ctx, text)
 	if err != nil {
-		log.Fatalf("could not say %s: %v", text.Text, err)
+		log.Fatalf("could not read [%s]: %v", text.Text, err)
 	}
 
-	if err := ioutil.WriteFile(*output, res.Audio, 0666); err != nil {
+	data := []byte{}
+	for {
+		res, err := stream.Recv()
+		if err != nil {
+			logrus.Fatal("could not receive data: ", err)
+		}
+		if res.Audio == nil {
+			logrus.Printf("all data received!!!")
+			break
+		}
+		data = append(data, res.Audio...)
+	}
+
+	if err := ioutil.WriteFile(*output, data, 0666); err != nil {
 		log.Fatalf("could not write to %s: %v", *output, err)
 	}
 	cmd := exec.Command("afplay", *output)

@@ -5,7 +5,7 @@ package read;
 option go_package = "github.com/smelton01/tts-server/read";
 
 service TextToSpeech {
-    rpc Read(Text) returns(Speech) {}
+    rpc Read(Text) returns(stream Speech) {}
 }
 
 message Text {
