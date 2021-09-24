@@ -14,4 +14,5 @@ message Text {
 
 message Speech {
     bytes audio = 1;
+    int32 index = 2;
 }

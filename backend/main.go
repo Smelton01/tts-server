@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os/exec"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 	pb "github.com/smelton01/tts-server/api"
@@ -37,7 +38,6 @@ type server struct{
 	pb.UnimplementedTextToSpeechServer
 }
 
-
 // Read method uses the gtts-cli package to convert the input
 // text to audio and streams the result back to the client
 func (server) Read(text *pb.Text, stream pb.TextToSpeech_ReadServer) error {
@@ -59,19 +59,31 @@ func (server) Read(text *pb.Text, stream pb.TextToSpeech_ReadServer) error {
 		return fmt.Errorf("could not read tmp file: %v", err)
 	}
 	// Stream audio file in chunks
-	for index := 0; index < len(data); index += chunkSize{
-		if index+chunkSize >= len(data) {
-			res := pb.Speech{Audio: data[index:len(data)-1] }
-			if err := stream.Send(&res); err != nil {
-				return err
+	var wg sync.WaitGroup
+	for index, count := 0,0; index < len(data); index, count = index + chunkSize, count + 1 {
+		end := index + chunkSize; 
+		if end >= len(data) {
+			end = len(data)-1
+		}
+		wg.Add(1)
+		go func (count, end, index int) {
+			defer wg.Done()
+			if err := sendChunk(wg, stream, data[index:end], int32(count)); err != nil {
+				panic(err)
 			}
-			stream.Send(&pb.Speech{})
-			return nil 
-		}
-		res := pb.Speech{Audio: data[index:index+chunkSize]}
-		if err := stream.Send(&res); err != nil {
-			return err
-		}
+		}(count, end, index)	
+	}
+	wg.Wait()
+	stream.Send(&pb.Speech{Audio: []byte{}, Index: -1})
+	return nil
+}
+
+func sendChunk(wg sync.WaitGroup, stream pb.TextToSpeech_ReadServer, data []byte, index int32) error {
+	res := pb.Speech{Audio: data, Index: index}
+	err := stream.Send(&res)
+	if err != nil {
+		logrus.Print(err)
+		return err
 	}
 	return nil
 }

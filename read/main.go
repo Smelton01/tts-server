@@ -45,26 +45,31 @@ func main() {
 	text := &pb.Text{Text: message}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
+	
 	stream, err := client.Read(ctx, text)
 	if err != nil {
 		log.Fatalf("could not read [%s]: %v", text.Text, err)
 	}
 
-	data := []byte{}
+	data := map[int][]byte{}
 	for {
 		res, err := stream.Recv()
 		if err != nil {
 			logrus.Fatal("could not receive data: ", err)
 		}
-		if res.Audio == nil {
+		if res.Index == -1 {
 			logrus.Printf("all data received!!!")
 			break
 		}
-		data = append(data, res.Audio...)
+		data[int(res.Index)] = res.Audio
 	}
 
-	if err := ioutil.WriteFile(*output, data, 0666); err != nil {
+	audio := []byte{}
+	for i := 0; i < len(data); i++ {
+		audio = append(audio, data[i]...)
+	}
+
+	if err := ioutil.WriteFile(*output, audio, 0666); err != nil {
 		log.Fatalf("could not write to %s: %v", *output, err)
 	}
 	cmd := exec.Command("afplay", *output)
