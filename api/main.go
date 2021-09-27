@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"flag"
@@ -9,14 +9,14 @@ import (
 	"sync"
 
 	"github.com/sirupsen/logrus"
-	pb "github.com/smelton01/tts-server/api"
+	pb "github.com/smelton01/tts-server/internal/protofiles"
 	"google.golang.org/grpc"
 )
 
 // chunk size to stream 20kb/s
 const chunkSize = 20_000
 
-func main() {
+func Serve() {
 	port := flag.Int("p", 8080, "port to listen to")
 	flag.Parse()
 
@@ -25,7 +25,7 @@ func main() {
 		logrus.Fatalf("could not listen to port %d: %v", *port, err)
 	}
 	logrus.Infof("listening to port %d", *port)
-	
+
 	s := grpc.NewServer()
 	pb.RegisterTextToSpeechServer(s, server{})
 	err = s.Serve(lis)
@@ -34,7 +34,7 @@ func main() {
 	}
 }
 
-type server struct{
+type server struct {
 	pb.UnimplementedTextToSpeechServer
 }
 
@@ -44,6 +44,7 @@ func (server) Read(text *pb.Text, stream pb.TextToSpeech_ReadServer) error {
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
 		return fmt.Errorf("could not create tmp file: %v", err)
+
 	}
 	if err := f.Close(); err != nil {
 		return fmt.Errorf("could not close %s: %v", f.Name(), err)
@@ -60,18 +61,18 @@ func (server) Read(text *pb.Text, stream pb.TextToSpeech_ReadServer) error {
 	}
 	// Stream audio file in chunks
 	var wg sync.WaitGroup
-	for index, count := 0,0; index < len(data); index, count = index + chunkSize, count + 1 {
-		end := index + chunkSize; 
+	for index, count := 0, 0; index < len(data); index, count = index+chunkSize, count+1 {
+		end := index + chunkSize
 		if end >= len(data) {
-			end = len(data)-1
+			end = len(data) - 1
 		}
 		wg.Add(1)
-		go func (count, end, index int) {
+		go func(count, end, index int) {
 			defer wg.Done()
 			if err := sendChunk(wg, stream, data[index:end], int32(count)); err != nil {
 				panic(err)
 			}
-		}(count, end, index)	
+		}(count, end, index)
 	}
 	wg.Wait()
 	stream.Send(&pb.Speech{Audio: []byte{}, Index: -1})
