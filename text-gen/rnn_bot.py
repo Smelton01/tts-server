@@ -18,15 +18,16 @@ import re
 
 # clone project
 
-train_file='lines.txt'
-seq_size=20
-batch_size=16
-embedding_size=64
-lstm_size=64
-gradients_norm=5
-initial_words=["Eventually", "we"]
-predict_top_k=5
-checkpoint_path='~/checkpoint'
+train_file = 'lines.txt'
+seq_size = 20
+batch_size = 16
+embedding_size = 64
+lstm_size = 64
+gradients_norm = 5
+initial_words = ["Eventually", "we"]
+predict_top_k = 5
+checkpoint_path = '~/checkpoint'
+
 
 def pre_text():
     """Input text file"""
@@ -52,12 +53,13 @@ def pre_text():
 
     # Remove scene and mood descriptions (in brackets)
     crap = re.compile(r"\(.*\)|\[.*\]|\*.*\*|^\*.*$|^.*\*$|^song.*$|^-.*$")
-    text_data = [re.sub(crap, '', line).strip() for line in clean_text if re.sub(crap, '', line)]
+    text_data = [re.sub(crap, '', line).strip()
+                 for line in clean_text if re.sub(crap, '', line)]
     with open("clean_text.txt", "w") as f:
         for l in text_data:
             f.write(l+" ")
 
-    #Vocabulary
+    # Vocabulary
 
     data = " ".join(text_data)
     data = data.split()
@@ -78,12 +80,14 @@ def pre_text():
     out_text = np.reshape(out_text, (batch_size, -1))
     return int_to_vocab, vocab_to_int, n_vocab, in_text, out_text
 
+
 def get_batches(in_text, out_text, batch_size, seq_size):
     num_batches = np.prod(in_text.shape) // (seq_size * batch_size)
     for i in range(0, num_batches * seq_size, seq_size):
         yield in_text[:, i:i+seq_size], out_text[:, i:i+seq_size]
 
-#Model
+# Model
+
 
 class RNNModule(nn.Module):
     def __init__(self, n_vocab, seq_size, embedding_size, lstm_size):
@@ -102,11 +106,13 @@ class RNNModule(nn.Module):
         logits = self.dense(output)
 
         return logits, state
+
     def zero_state(self, batch_size):
         return (torch.zeros(1, batch_size, self.lstm_size),
                 torch.zeros(1, batch_size, self.lstm_size))
 
-#Loss
+# Loss
+
 
 def get_loss_and_train_op(net, lr=0.001):
     criterion = nn.CrossEntropyLoss()
@@ -114,26 +120,27 @@ def get_loss_and_train_op(net, lr=0.001):
 
     return criterion, optimizer
 
+
 def run(epoch):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
+    # int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = get_data_from_file(
     #    flags.train_file, flags.batch_size, flags.seq_size)
     net = RNNModule(n_vocab, seq_size,
                     embedding_size, lstm_size)
     net = net.to(device)
     criterion, optimizer = get_loss_and_train_op(net, 0.01)
     iteration = 0
-    
+
     for e in range(epoch):
         batches = get_batches(in_text, out_text, batch_size, seq_size)
         state_h, state_c = net.zero_state(batch_size)
-        
+
         # Transfer data to GPU
         state_h = state_h.to(device)
         state_c = state_c.to(device)
         for x, y in batches:
             iteration += 1
-            
+
             # Tell it we are in training mode
             net.train()
 
@@ -155,22 +162,23 @@ def run(epoch):
             # Perform back-propagation
             loss.backward()
             _ = torch.nn.utils.clip_grad_norm_(
-                  net.parameters(), gradients_norm)
+                net.parameters(), gradients_norm)
             # Update the network's parameters
             optimizer.step()
 
             if iteration % 100 == 0:
-              print('Epoch: {}/{}'.format(e, epoch),
-                    'Iteration: {}'.format(iteration),
-                    'Loss: {}'.format(loss_value))
+                print('Epoch: {}/{}'.format(e, epoch),
+                      'Iteration: {}'.format(iteration),
+                      'Loss: {}'.format(loss_value))
 
             if iteration % 1000 == 0:
-              predict(device, net, initial_words, n_vocab,
-                      vocab_to_int, int_to_vocab, top_k=5)
-              torch.save(net.state_dict(),
-                      './checkpoint/model-{}.pth'.format(iteration))
+                predict(device, net, initial_words, n_vocab,
+                        vocab_to_int, int_to_vocab, top_k=5)
+                torch.save(net.state_dict(),
+                           './checkpoint/model-{}.pth'.format(iteration))
 
-#inference"
+
+# inference"
 """
 
 def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
@@ -203,7 +211,8 @@ def predict(device, net, words, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
 #run(10)
 """
 
-#ls checkpoint
+# ls checkpoint
+
 
 def predict2(words, device, net, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
     net.eval()
@@ -213,13 +222,13 @@ def predict2(words, device, net, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
     for w in words:
         ix = torch.tensor([[vocab_to_int[w]]]).to(device)
         output, (state_h, state_c) = net(ix, (state_h, state_c))
-    
+
     _, top_ix = torch.topk(output[0], k=top_k)
     choices = top_ix.tolist()
     choice = np.random.choice(choices[0])
 
     words.append(int_to_vocab[choice])
-    
+
     for _ in range(100):
         ix = torch.tensor([[choice]]).to(device)
         output, (state_h, state_c) = net(ix, (state_h, state_c))
@@ -235,17 +244,21 @@ def predict2(words, device, net, n_vocab, vocab_to_int, int_to_vocab, top_k=5):
 def pred(prefix):
     int_to_vocab, vocab_to_int, n_vocab, in_text, out_text = pre_text()
     model = RNNModule(n_vocab, seq_size,
-                    embedding_size, lstm_size)
-    model.load_state_dict(torch.load("./checkpoint/model-26000.pth", map_location="cpu"))
+                      embedding_size, lstm_size)
+    model.load_state_dict(torch.load(
+        "./checkpoint/model-26000.pth", map_location="cpu"))
     dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(dev)
-    predict2(prefix, device="cpu", net=model, n_vocab=n_vocab, vocab_to_int=vocab_to_int, int_to_vocab=int_to_vocab)
+    predict2(prefix, device="cpu", net=model, n_vocab=n_vocab,
+             vocab_to_int=vocab_to_int, int_to_vocab=int_to_vocab)
     print("DONE")
+
 
 def main():
     print("Startign pred")
     res = pred(["to", "do"])
     print(res)
+
 
 if __name__ == "__main__":
     main()
