@@ -27,20 +27,20 @@ func Serve() {
 	logrus.Infof("listening to port %d", *port)
 
 	s := grpc.NewServer()
-	pb.RegisterTextToSpeechServer(s, server{})
+	pb.RegisterTextToSpeechServer(s, Server{})
 	err = s.Serve(lis)
 	if err != nil {
 		logrus.Fatalf("could not serve: %v", err)
 	}
 }
 
-type server struct {
+type Server struct {
 	pb.UnimplementedTextToSpeechServer
 }
 
 // Read method uses the gtts-cli package to convert the input
 // text to audio and streams the result back to the client
-func (server) Read(text *pb.Text, stream pb.TextToSpeech_ReadServer) error {
+func (Server) Read(text *pb.Text, stream pb.TextToSpeech_ReadServer) error {
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
 		return fmt.Errorf("could not create tmp file: %v", err)

@@ -4,6 +4,7 @@ Copyright © 2021 Simon Mduduzi Juba scimail09@gmail.com
 package cmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 
@@ -27,7 +28,11 @@ to quickly create a Cobra application.`,
 			log.Fatalf("could not read file %s: %v", args[0], err)
 		}
 		message := string(b)
-		return tts.Read(message, backend)
+		audio, err := tts.Read(message, backend)
+		if err != nil {
+			return fmt.Errorf("could not read [%v]: %v", args[0], err)
+		}
+		return tts.PlayAudio(audio)
 	},
 }
 

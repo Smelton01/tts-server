@@ -1,6 +1,5 @@
 /*
-Copyright © 2021 Simon Juba
-
+Copyright © 2021 Simon Mduduzi Juba scimail09@gmail.com
 */
 package cmd
 
